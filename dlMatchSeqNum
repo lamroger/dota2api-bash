@@ -1,0 +1,27 @@
+#!/bin/bash
+
+SEQID=1			#Begin downloading at this Sequential ID
+ENDSEQID=276480313	#Stop when you downloaded this ID
+APIKEY=DCxxxx           #Replace with your Steam API Key
+
+
+while [ $SEQID -lt $ENDSEQID ]; do
+	# Download match history and store locally
+	wget "https://api.steampowered.com/IDOTA2Match_570/GetMatchHistoryBySequenceNum/v0001/?key=$APIKEY&start_at_match_seq_num=$SEQID" -O $SEQID.json
+
+	# Store in Amazon S3 storage (requires scripts from timkay.com/aws/)
+	echo "Putting $SEQID.json into S3"
+	~/aws/s3put dota2-seq-num-logs/$SEQID.json $SEQID.json
+
+	# Hacking away to get last Sequential ID
+	VAR=$(sed -n -e '/match_seq_num/p' $SEQID.json | sed -n '$p' | sed -r  's/^[^0-9]*([0-9]+).*/\1/')
+
+	# Remove file since we stored it in S3	
+	rm $SEQID.json
+	VAR=$(( VAR + 1 ))
+	echo "Next seq_num: $VAR"
+	SEQID=$VAR
+
+done
+
+
